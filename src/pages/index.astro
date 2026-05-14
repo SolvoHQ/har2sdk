@@ -249,6 +249,58 @@ const sample = `{
         transition: opacity 0.4s ease;
       }
       .toast.fade { opacity: 0; }
+      .waitlist {
+        margin-top: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 16px;
+      }
+      .waitlist-label {
+        display: block;
+        color: var(--fg);
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+      .waitlist-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .waitlist input[type="email"] {
+        flex: 1 1 240px;
+        background: var(--panel-2);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 9px 12px;
+        font: inherit;
+        font-size: 13px;
+        outline: none;
+      }
+      .waitlist input[type="email"]:focus { border-color: var(--accent); }
+      .waitlist button {
+        background: var(--accent);
+        color: var(--accent-fg);
+        border: none;
+        padding: 9px 16px;
+        font: inherit;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .waitlist button:hover:not(:disabled) { filter: brightness(1.1); }
+      .waitlist button:disabled { opacity: 0.5; cursor: wait; }
+      .waitlist .done {
+        color: var(--success);
+        font-size: 13px;
+        padding: 4px 0;
+      }
     </style>
   </head>
   <body>
@@ -323,6 +375,26 @@ const user = await client.users.get(42);</pre>
           <p>Secret values (Bearer tokens, JWTs, AWS keys, Stripe keys) are scrubbed from your input <strong>in the browser</strong> before upload — header NAMES are kept so the LLM can still infer auth shape.</p>
         </div>
       </details>
+
+      <div class="waitlist" id="waitlist">
+        <form id="waitlist-form" novalidate>
+          <label for="waitlist-email" class="waitlist-label">
+            v1.1+ coming soon — more auth patterns, richer type inference, pagination detection, opt-in error-schema synthesis. Email me one time when it ships:
+          </label>
+          <div class="waitlist-row">
+            <input
+              type="email"
+              id="waitlist-email"
+              name="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              required
+            />
+            <button type="submit" id="waitlist-btn">Notify me</button>
+          </div>
+          <span class="status" id="waitlist-status">Single email when v1.1 ships. No drip, no marketing.</span>
+        </form>
+      </div>
 
       <footer>
         Free tool · <a href="https://github.com/SolvoHQ/har2sdk" target="_blank" rel="noopener">source on GitHub</a> · sister projects: <a href="https://jsontosdk.vercel.app/" target="_blank" rel="noopener">jsontosdk</a> · <a href="https://dotenv2types.vercel.app/" target="_blank" rel="noopener">dotenv2types</a>
@@ -553,6 +625,50 @@ const user = await client.users.get(42);</pre>
             setTimeout(() => { shareBtn.textContent = orig; shareBtn.classList.remove('copied'); }, 1400);
           } catch (e) {
             shareBtn.textContent = 'Copy failed';
+          }
+        });
+
+        const waitlistForm = document.getElementById('waitlist-form');
+        const waitlistEmail = document.getElementById('waitlist-email');
+        const waitlistBtn = document.getElementById('waitlist-btn');
+        const waitlistStatus = document.getElementById('waitlist-status');
+        const waitlistContainer = document.getElementById('waitlist');
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        waitlistForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = (waitlistEmail.value || '').trim();
+          if (!email || !EMAIL_RE.test(email)) {
+            waitlistStatus.textContent = 'Please enter a valid email.';
+            waitlistStatus.classList.add('error');
+            return;
+          }
+          waitlistStatus.classList.remove('error');
+          waitlistBtn.disabled = true;
+          waitlistStatus.textContent = 'Sending…';
+          try {
+            const res = await fetch('/api/waitlist', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ email }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              if (res.status === 429) {
+                waitlistStatus.textContent = "You've hit 5 signups / hour. Try again later.";
+              } else {
+                waitlistStatus.textContent = (data && data.error) || ('HTTP ' + res.status);
+              }
+              waitlistStatus.classList.add('error');
+              waitlistBtn.disabled = false;
+              return;
+            }
+            track('waitlist_signup', {});
+            waitlistContainer.innerHTML = '<div class="done">Thanks — we’ll email you once when v1.1 ships.</div>';
+          } catch (err) {
+            waitlistStatus.textContent = 'Network error: ' + err.message;
+            waitlistStatus.classList.add('error');
+            waitlistBtn.disabled = false;
           }
         });
 
