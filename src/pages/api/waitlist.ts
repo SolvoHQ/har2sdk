@@ -17,6 +17,15 @@ export const PUT = methodNotAllowed;
 export const DELETE = methodNotAllowed;
 export const PATCH = methodNotAllowed;
 
+export const OPTIONS: APIRoute = () =>
+  new Response(null, {
+    status: 200,
+    headers: {
+      allow: 'POST, OPTIONS',
+      'access-control-allow-methods': 'POST, OPTIONS',
+    },
+  });
+
 export const POST: APIRoute = async ({ request }) => {
   const ip = getClientIp(request.headers);
 
