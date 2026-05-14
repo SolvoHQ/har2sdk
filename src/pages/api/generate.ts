@@ -402,22 +402,38 @@ async function runClaude(
 }
 
 function extractJson(text: string): { client?: unknown; types?: unknown; readme?: unknown } | null {
-  // Tolerate ```json fences even though we tell the model not to use them.
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = (fenced ? fenced[1] : text).trim();
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    // Last-ditch: find first { and last }
-    const start = candidate.indexOf('{');
-    const end = candidate.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(candidate.slice(start, end + 1));
-      } catch {
-        return null;
-      }
-    }
-    return null;
+  // Candidate set, tried in order:
+  // 1. raw text as-is
+  // 2. raw text without an outer ```json ... ``` wrapper (only if the WHOLE text
+  //    is wrapped, otherwise we'd chop the nested fences inside the readme value)
+  // 3. substring from first { to last }
+  const candidates: string[] = [];
+  const trimmed = text.trim();
+  candidates.push(trimmed);
+
+  // Outer-fence unwrap: only if text starts with ``` and ends with ```
+  if (trimmed.startsWith('```')) {
+    // Drop the opening fence (```json or ```)
+    let inner = trimmed.replace(/^```[a-zA-Z]*\s*\n?/, '');
+    // Drop trailing fence
+    inner = inner.replace(/```\s*$/, '');
+    candidates.push(inner.trim());
   }
+
+  // First { to last } substring
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    candidates.push(trimmed.slice(start, end + 1));
+  }
+
+  for (const c of candidates) {
+    try {
+      const parsed = JSON.parse(c);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {
+      // try next
+    }
+  }
+  return null;
 }
