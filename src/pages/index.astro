@@ -1,0 +1,566 @@
+---
+// har2sdk — paste HAR → typed TypeScript SDK
+const sample = `{
+  "log": {
+    "version": "1.2",
+    "creator": {"name": "Chrome", "version": "120"},
+    "entries": [
+      {
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.com/v1/users/42",
+          "headers": [{"name": "Authorization", "value": "Bearer eyJhbGciOi..."}],
+          "queryString": []
+        },
+        "response": {
+          "status": 200,
+          "content": {"mimeType": "application/json", "text": "{\\"id\\":42,\\"name\\":\\"Ada\\",\\"email\\":\\"ada@example.com\\"}"}
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "https://api.example.com/v1/messages",
+          "headers": [{"name": "Authorization", "value": "Bearer eyJhbGciOi..."}, {"name": "content-type", "value": "application/json"}],
+          "postData": {"mimeType": "application/json", "text": "{\\"to\\":42,\\"text\\":\\"hi\\"}"}
+        },
+        "response": {
+          "status": 201,
+          "content": {"mimeType": "application/json", "text": "{\\"id\\":\\"msg_1\\",\\"sent\\":true}"}
+        }
+      }
+    ]
+  }
+}`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>har2sdk — Paste HAR → Typed TypeScript SDK</title>
+    <meta
+      name="description"
+      content="Paste a HAR file → typed TypeScript fetch SDK with semantic method names, resource grouping, and auth detection. No signup. LLM-named."
+    />
+    <link rel="canonical" href="https://har2sdk.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://har2sdk.vercel.app/" />
+    <meta property="og:title" content="har2sdk — Paste HAR → Typed TypeScript SDK" />
+    <meta property="og:description" content="Paste a HAR file → typed TypeScript fetch SDK with semantic method names, resource grouping, and auth detection. No signup. LLM-named." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="har2sdk — Paste HAR → Typed TypeScript SDK" />
+    <meta name="twitter:description" content="Paste a HAR file → typed TypeScript fetch SDK with semantic method names, resource grouping, and auth detection. No signup. LLM-named." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E" />
+    <script is:inline>
+      window.va = window.va || function (...a) { (window.vaq = window.vaq || []).push(a); };
+    </script>
+    <script>
+      import { inject } from '@vercel/analytics';
+      inject();
+    </script>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --panel: #161b22;
+        --panel-2: #1c2128;
+        --border: #30363d;
+        --fg: #e6edf3;
+        --fg-dim: #8b949e;
+        --accent: #f7df1e;
+        --accent-fg: #0d1117;
+        --code: #d2a8ff;
+        --error: #f85149;
+        --success: #3fb950;
+        --warn: #d29922;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.5 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        min-height: 100vh;
+      }
+      .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 20px 80px; }
+      header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; gap: 8px; }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+        letter-spacing: -0.01em;
+        font-weight: 700;
+      }
+      h1 .y { color: var(--accent); }
+      .tag { color: var(--fg-dim); font-size: 13px; }
+      .tag a { color: var(--fg-dim); border-bottom: 1px dotted var(--fg-dim); text-decoration: none; }
+      .tag a:hover { color: var(--fg); }
+      .pitch { color: var(--fg-dim); font-size: 13px; margin: 0 0 18px; }
+      .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+      @media (min-width: 900px) {
+        .row.input-row { grid-template-columns: 1fr; }
+      }
+      @media (min-width: 1200px) {
+        .row.output-row { grid-template-columns: 1fr 1fr 1fr; }
+      }
+      .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+      .panel-head {
+        background: var(--panel-2);
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--fg-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .copy-btn {
+        background: transparent;
+        color: var(--fg-dim);
+        border: 1px solid var(--border);
+        padding: 3px 10px;
+        font-size: 11px;
+        font-family: inherit;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .copy-btn:hover { color: var(--fg); border-color: var(--fg-dim); }
+      .copy-btn.copied { color: var(--success); border-color: var(--success); }
+      textarea, pre {
+        margin: 0;
+        padding: 14px;
+        font: inherit;
+        background: var(--panel);
+        color: var(--fg);
+        border: none;
+        outline: none;
+        width: 100%;
+        resize: vertical;
+      }
+      textarea { min-height: 200px; }
+      pre { min-height: 300px; max-height: 60vh; overflow: auto; white-space: pre; }
+      .controls { display: flex; align-items: center; gap: 12px; margin: 12px 0 18px; flex-wrap: wrap; }
+      button.generate {
+        background: var(--accent);
+        color: var(--accent-fg);
+        border: none;
+        padding: 10px 22px;
+        font: inherit;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      button.generate:hover:not(:disabled) { filter: brightness(1.1); }
+      button.generate:disabled { opacity: 0.5; cursor: wait; }
+      button.secondary {
+        background: transparent;
+        color: var(--fg);
+        border: 1px solid var(--border);
+        padding: 9px 14px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      button.secondary:hover:not(:disabled) { border-color: var(--fg-dim); background: var(--panel-2); }
+      button.secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.secondary.copied { color: var(--success); border-color: var(--success); }
+      .status { color: var(--fg-dim); font-size: 12px; }
+      .status.error { color: var(--error); }
+      .status.redacted { color: var(--warn); }
+      .status.notice { color: var(--warn); }
+      .ph { color: var(--fg-dim); font-style: italic; padding: 14px; }
+      footer { margin-top: 32px; color: var(--fg-dim); font-size: 12px; text-align: center; }
+      footer a { color: var(--fg-dim); }
+      .kbd {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+      }
+      details.usage {
+        margin-top: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      details.usage > summary {
+        padding: 10px 14px;
+        background: var(--panel-2);
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--fg-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        list-style: none;
+      }
+      details.usage > summary::-webkit-details-marker { display: none; }
+      details.usage > summary::before { content: "▸ "; }
+      details.usage[open] > summary::before { content: "▾ "; }
+      details.usage:hover > summary { color: var(--fg); }
+      .usage-body { padding: 14px; color: var(--fg-dim); }
+      .usage-body p { margin: 0 0 10px; }
+      .usage-body code {
+        background: var(--panel-2);
+        padding: 1px 6px;
+        border-radius: 3px;
+        color: var(--code);
+        font: inherit;
+      }
+      .usage-body pre {
+        background: var(--panel-2);
+        padding: 10px 12px;
+        margin: 8px 0 14px;
+        border-radius: 4px;
+        min-height: 0;
+        color: var(--fg);
+        font-size: 13px;
+      }
+      .usage-body pre:last-child { margin-bottom: 0; }
+      .toast {
+        margin: 0 0 10px;
+        padding: 10px 14px;
+        background: var(--panel);
+        border: 1px solid var(--warn);
+        border-radius: 6px;
+        color: var(--warn);
+        font-size: 13px;
+        transition: opacity 0.4s ease;
+      }
+      .toast.fade { opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>har<span class="y">2sdk</span></h1>
+        <div class="tag">
+          <a href="https://github.com/SolvoHQ/har2sdk" target="_blank" rel="noopener">github</a>
+          · <a href="https://jsontosdk.vercel.app/" target="_blank" rel="noopener">jsontosdk</a>
+          · <a href="https://dotenv2types.vercel.app/" target="_blank" rel="noopener">dotenv2types</a>
+        </div>
+      </header>
+      <p class="pitch">
+        Paste a HAR (Chrome/Firefox network export) → typed TypeScript SDK with LLM-named methods,
+        resource grouping, and auth detection. No signup.
+        <span class="kbd">⌘</span>+<span class="kbd">Enter</span> to generate.
+      </p>
+
+      <div id="toast-host"></div>
+
+      <div class="row input-row">
+        <div class="panel">
+          <div class="panel-head">
+            <span>HAR (JSON)</span>
+            <span id="size" class="status"></span>
+          </div>
+          <textarea id="input" spellcheck="false" placeholder={sample}>{sample}</textarea>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="generate" id="gen" type="button">Generate</button>
+        <button class="secondary" id="try-example" type="button">Try example</button>
+        <button class="secondary" id="share-url" type="button">Share URL</button>
+        <span class="status" id="status">Up to 50 KB / 50 endpoints · 20 generations / hour / IP · free</span>
+      </div>
+
+      <div class="row output-row">
+        <div class="panel">
+          <div class="panel-head">
+            <span>client.ts — save as src/client.ts</span>
+            <button class="copy-btn" data-target="client-out" type="button">Copy</button>
+          </div>
+          <pre id="client-out"><span class="ph">// Typed SDK client will appear here</span></pre>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <span>types.ts — save as src/types.ts</span>
+            <button class="copy-btn" data-target="types-out" type="button">Copy</button>
+          </div>
+          <pre id="types-out"><span class="ph">// Request/response types will appear here</span></pre>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <span>README.md — paste into your repo</span>
+            <button class="copy-btn" data-target="readme-out" type="button">Copy</button>
+          </div>
+          <pre id="readme-out"><span class="ph"># README with usage examples will appear here</span></pre>
+        </div>
+      </div>
+
+      <details class="usage">
+        <summary>Use these in your project</summary>
+        <div class="usage-body">
+          <p>1. Save the panels as <code>src/client.ts</code> and <code>src/types.ts</code> in your project, plus the generated <code>README.md</code> in your repo root.</p>
+          <p>2. Import and use:</p>
+          <pre>import {'{'} Client {'}'} from "./client";
+
+const client = new Client({'{'} apiKey: process.env.API_KEY! {'}'});
+const user = await client.users.get(42);</pre>
+          <p>The generated SDK uses global <code>fetch</code> (no extra deps). Bearer / X-API-Key auth is detected automatically from your HAR.</p>
+          <p>Secret values (Bearer tokens, JWTs, AWS keys, Stripe keys) are scrubbed from your input <strong>in the browser</strong> before upload — header NAMES are kept so the LLM can still infer auth shape.</p>
+        </div>
+      </details>
+
+      <footer>
+        Free tool · <a href="https://github.com/SolvoHQ/har2sdk" target="_blank" rel="noopener">source on GitHub</a> · sister projects: <a href="https://jsontosdk.vercel.app/" target="_blank" rel="noopener">jsontosdk</a> · <a href="https://dotenv2types.vercel.app/" target="_blank" rel="noopener">dotenv2types</a>
+      </footer>
+    </div>
+
+    <script is:inline>
+      (function () {
+        const input = document.getElementById('input');
+        const genBtn = document.getElementById('gen');
+        const tryBtn = document.getElementById('try-example');
+        const shareBtn = document.getElementById('share-url');
+        const status = document.getElementById('status');
+        const sizeEl = document.getElementById('size');
+        const clientOut = document.getElementById('client-out');
+        const typesOut = document.getElementById('types-out');
+        const readmeOut = document.getElementById('readme-out');
+        const toastHost = document.getElementById('toast-host');
+        const MAX_BYTES = 50 * 1024;
+
+        function b64encode(s) {
+          return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+        function b64decode(s) {
+          s = s.replace(/-/g, '+').replace(/_/g, '/');
+          while (s.length % 4) s += '=';
+          try { return decodeURIComponent(escape(atob(s))); } catch (e) { return null; }
+        }
+
+        function renderSize() {
+          const bytes = new TextEncoder().encode(input.value).length;
+          sizeEl.textContent = bytes ? `${bytes.toLocaleString()} bytes` : '';
+          sizeEl.classList.toggle('error', bytes > MAX_BYTES);
+        }
+
+        function setOutput(client, types, readme) {
+          clientOut.textContent = client;
+          typesOut.textContent = types;
+          readmeOut.textContent = readme;
+        }
+
+        function showToast(message) {
+          const div = document.createElement('div');
+          div.className = 'toast';
+          div.textContent = message;
+          toastHost.appendChild(div);
+          setTimeout(() => { div.classList.add('fade'); }, 4000);
+          setTimeout(() => { try { div.remove(); } catch (_) {} }, 4600);
+        }
+
+        // Client-side secret scrub. Scans the input text and replaces secret-shaped
+        // VALUES with <REDACTED> while preserving header NAMES so the LLM can
+        // still detect auth pattern. Returns { scrubbed, count }.
+        function scrubSecrets(text) {
+          let count = 0;
+          let out = text;
+
+          // 1. Bearer tokens — three sub-patterns to cover HAR header objects + raw lines.
+          //    1a. HAR header object with "name":"Authorization" + "value":"..."
+          out = out.replace(/("name"\s*:\s*"authorization"\s*,\s*"value"\s*:\s*")[^"]+(")/gi, (_m, p1, p2) => {
+            count += 1;
+            return p1 + '<REDACTED>' + p2;
+          });
+          //    1b. "value":"Bearer ..." object (when name appears before)
+          out = out.replace(/("value"\s*:\s*")Bearer\s+[^"]+(")/gi, (_m, p1, p2) => {
+            count += 1;
+            return p1 + 'Bearer <REDACTED>' + p2;
+          });
+          //    1c. raw HTTP line "Authorization: Bearer ..."
+          out = out.replace(/(Authorization:\s*Bearer\s+)\S+/gi, (_m, p1) => {
+            count += 1;
+            return p1 + '<REDACTED>';
+          });
+
+          // 2. X-API-Key header value
+          out = out.replace(/("name"\s*:\s*"x-api-key"\s*,\s*"value"\s*:\s*")[^"]+(")/gi, (_m, p1, p2) => {
+            count += 1;
+            return p1 + '<REDACTED>' + p2;
+          });
+
+          // 3. JWT-shaped values (3 base64url segments separated by dots)
+          out = out.replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, () => {
+            count += 1;
+            return '<REDACTED>';
+          });
+
+          // 4. AWS access key ids
+          out = out.replace(/AKIA[0-9A-Z]{16}/g, () => {
+            count += 1;
+            return '<REDACTED>';
+          });
+
+          // 5. Stripe-style live/test keys inside a "value":"..." block
+          out = out.replace(/("value"\s*:\s*")sk_(live|test)_[A-Za-z0-9]{16,}(")/gi, (_m, p1, _env, p3) => {
+            count += 1;
+            return p1 + '<REDACTED>' + p3;
+          });
+
+          return { scrubbed: out, count };
+        }
+
+        async function generate() {
+          const harText = input.value.trim();
+          if (!harText) {
+            status.textContent = 'Paste a HAR first.';
+            status.classList.add('error');
+            return;
+          }
+          const bytes = new TextEncoder().encode(harText).length;
+          if (bytes > MAX_BYTES) {
+            status.textContent = `Input is ${bytes.toLocaleString()} bytes — max is ${MAX_BYTES.toLocaleString()}.`;
+            status.classList.add('error');
+            return;
+          }
+
+          // Client-side secret scrub BEFORE upload.
+          const { scrubbed, count: redactedCount } = scrubSecrets(harText);
+          let sendText = harText;
+          if (redactedCount > 0) {
+            sendText = scrubbed;
+            // Reflect the scrubbed value back into the textarea so user sees exactly what was sent.
+            input.value = scrubbed;
+            renderSize();
+            showToast(`🔒 Redacted ${redactedCount} secret-shaped value(s) before sending — see <REDACTED> markers in the input.`);
+          }
+
+          genBtn.disabled = true;
+          status.classList.remove('error');
+          status.classList.remove('notice');
+          if (redactedCount > 0) {
+            status.classList.add('redacted');
+            status.textContent = `🔒 Redacted ${redactedCount} secret-shaped value(s) before sending. Generating…`;
+          } else {
+            status.classList.remove('redacted');
+            status.textContent = 'Generating…';
+          }
+          const t0 = performance.now();
+          try {
+            const res = await fetch('/api/generate', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ har: sendText }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              if (res.status === 429) {
+                const m = (data && data.error || '').match(/~?(\d+)\s*m/);
+                status.textContent = m
+                  ? `You've hit 20 generations / hour. Try again in ~${m[1]}m.`
+                  : "You've hit 20 generations / hour. Try again in a bit.";
+              } else {
+                status.textContent = (data && data.error) || ('HTTP ' + res.status);
+              }
+              status.classList.add('error');
+              return;
+            }
+            setOutput(data.client || '', data.types || '', data.readme || '');
+            const ms = Math.round(performance.now() - t0);
+            status.classList.remove('redacted');
+            if (data.truncated || (typeof data.notice === 'string' && data.notice.length > 0)) {
+              status.classList.add('notice');
+              const notice = data.notice || `⚠ Input was large; truncated to 50 endpoints.`;
+              status.textContent = `Generated in ${ms} ms. ${notice}`;
+            } else {
+              status.textContent = `Generated in ${ms} ms.`;
+            }
+            try {
+              location.hash = 'payload=' + b64encode(sendText);
+            } catch (e) { /* ignore */ }
+            track('generate_complete', { ms, bytes });
+          } catch (e) {
+            status.textContent = 'Network error: ' + e.message;
+            status.classList.add('error');
+          } finally {
+            genBtn.disabled = false;
+          }
+        }
+
+        function track(name, detail) {
+          try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('har2sdk:' + name, { detail })); } catch (_) {}
+          try { window.va && window.va('event', { name, data: detail }); } catch (_) {}
+          try {
+            if (window.goatcounter && typeof window.goatcounter.count === 'function') {
+              window.goatcounter.count({ path: name, event: true, title: name });
+            }
+          } catch (_) {}
+        }
+
+        document.querySelectorAll('.copy-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const target = document.getElementById(btn.dataset.target);
+            const text = target.textContent || '';
+            if (!text || text.startsWith('// ') || text.startsWith('# ')) return;
+            try {
+              await navigator.clipboard.writeText(text);
+              const orig = btn.textContent;
+              btn.textContent = 'Copied';
+              btn.classList.add('copied');
+              setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1200);
+            } catch (e) {
+              btn.textContent = 'Copy failed';
+            }
+          });
+        });
+
+        input.addEventListener('input', renderSize);
+        input.addEventListener('keydown', (e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            generate();
+          }
+        });
+        genBtn.addEventListener('click', generate);
+
+        tryBtn.addEventListener('click', () => {
+          input.value = input.placeholder;
+          renderSize();
+          generate();
+        });
+
+        shareBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(location.href);
+            const orig = shareBtn.textContent;
+            shareBtn.textContent = 'Link copied';
+            shareBtn.classList.add('copied');
+            setTimeout(() => { shareBtn.textContent = orig; shareBtn.classList.remove('copied'); }, 1400);
+          } catch (e) {
+            shareBtn.textContent = 'Copy failed';
+          }
+        });
+
+        // restore from URL fragment if present
+        const hash = location.hash.replace(/^#/, '');
+        const params = new URLSearchParams(hash);
+        const payload = params.get('payload');
+        if (payload) {
+          const decoded = b64decode(payload);
+          if (decoded) {
+            input.value = decoded;
+            renderSize();
+            track('share_link_load', { bytes: new TextEncoder().encode(decoded).length });
+            status.textContent = 'Loaded from URL. Press Generate to run.';
+          }
+        }
+        renderSize();
+      })();
+    </script>
+  </body>
+</html>
